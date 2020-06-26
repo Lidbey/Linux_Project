@@ -1,0 +1,318 @@
+#!/bin/bash
+#title:         Zenity quiz game
+#author:        Wojciech Wicki
+#description:   This program will let you play quiz game and add your own questions
+#date:          29.12.2019
+#license:       Non-commercial
+
+
+#functions
+
+#gets player from a player list
+PLAYERS() {
+IFS=$'\n'
+        USERS=`ls -d ../../Users/*/ | cut -d '/' -f 4`
+
+        FUNCTION=$(zenity --list \
+        --title="QUIZ GAME" \
+        --text="Choose User" \
+        --column="User" \
+        $USERS \
+        --height 350 --width 500);
+}
+
+#gets type from a type list
+TYPE() {
+IFS=$'\n '
+EXPARR2=""
+        NEWTYPES=`ls -d ../../Newtypes/*/ | cut -d '/' -f 4`
+        read -d '' -r -a NEWTYPES <<< $NEWTYPES
+        for i in "${NEWTYPES[@]}" 
+        do
+        EXPARR2="$EXPARR2 $i"
+        done
+        FUNCTION3=$(zenity --list \
+        --title="QUIZ GAME" \
+        --text="Choose Type" \
+        --column="Type" \
+        $EXPARR2 \
+        --height 350 --width 500);
+}
+
+#checking parameters given to program
+    if [[ -n $1 ]]; then
+    if [[ $1 == '-h' ]]; then
+    echo "This is zenity quiz game, you can play it very simply, it is created very user friendly"
+    fi    
+    if [[ $1 == '-v' ]]; then
+    echo "Author: Wojciech Wicki, Version 1.00, maybe will get updated soon :)"    
+    fi    
+    else
+
+#start of program
+zenity --info --title "QUIZ GAME" --text "Welcome in my quiz game";
+
+#getting list of types
+IFS=$'\n' 
+NEWTYPES=`ls -d Newtypes/*/ | cut -d '/' -f 2`
+read -d '' -r -a NEWTYPES <<< $NEWTYPES
+IFS=' '
+
+#creating/choosing user
+USER=$(zenity --entry --title="QUIZ GAME" --text="Enter username")
+cd "Users"
+if [[ -d $USER ]]; then
+cd $USER
+else
+mkdir $USER
+cd $USER
+mkdir "Temp"
+echo "username: $USER" > config
+echo "moderate: 0" >> config
+touch points
+    for i in "${NEWTYPES[@]}" 
+    do
+    echo "$i/0" >> points
+    touch $i
+    done
+fi
+
+#start of game
+while [[ $OPTION != "Quit Game" ]]; do
+OPTION3=0
+CANCEL=0
+MODERATE=$(grep moderate config | cut -d ' ' -f 2)
+SCORE=0
+
+if [[ $MODERATE == 1 ]]; then
+VAR_MODERATE="Availabe"
+else
+VAR_MODERATE="Not Availabe"
+fi
+
+#creating starting list content
+ITER=0
+EXPARR=""
+IFS=$'\n' 
+NEWTYPES=`ls -d ../../Newtypes/*/ | cut -d '/' -f 4`
+read -d '' -r -a NEWTYPES <<< $NEWTYPES
+IFS=$'\n ' #0
+for i in "${NEWTYPES[@]}" 
+do
+    ITER=$(($ITER+1))
+    EXPARR="$EXPARR $i $(grep $i ../../config | cut -d '/' -f 2) $(grep $i points | cut -d '/' -f 2) "
+    SCORE=$(($SCORE+$(grep $i points | cut -d '/' -f 2)))
+done
+
+#calculating level
+LEVEL=0
+SCORETEMP=$SCORE
+while [[ $SCORETEMP -gt 1 ]]; do
+LEVEL=$(($LEVEL+1))
+SCORETEMP=$(($SCORETEMP/2))
+done
+
+#main list
+OPTION=$(zenity --list \
+--title="QUIZ GAME" \
+--text="Choose option" \
+--column="Type" --column="All questions" --column "Completed questions" \
+$EXPARR \
+"Change User" " " " " \
+"User information" "Current user:" "$USER" \
+"Moderate" "$VAR_MODERATE" "$VAR_MODERATE" \
+"Quit Game" " " " " \
+--height 350 --width 500);
+
+
+#particular options
+case $OPTION in
+
+"Quit Game");;
+
+"Change User")
+PLAYERS
+OPTION2=$FUNCTION
+if [[ -n $OPTION2 ]]; then
+USER=$OPTION2
+cd ../$USER
+fi
+;;
+"User information")
+zenity --info --title "QUIZ GAME" --text "Username: $USER\nLevel: $LEVEL\nScore: $SCORE\nModerating: $VAR_MODERATE" --width 300
+;;
+
+#moderate option//list
+"Moderate")
+    if [[ $MODERATE == 1 ]]; then
+    while [[ $OPTION3 -ne 7 ]]; do
+    OPTION3=$(zenity --list \
+    --title="QUIZ GAME" \
+    --text="Choose option" \
+    --column="No." --column="Type" \
+    "1" "Delete User" \
+    "2" "Make user a Moderator" \
+    "3" "Add Type" \
+    "4" "Add Question" \
+    "5" "Delete Type" \
+    "6" "Delete Question" \
+    "7" "Leave" \
+    --height 350 --width 500);
+#moderate particular options
+    case $OPTION3 in
+    1)
+        PLAYERS
+        OPTION2=$FUNCTION
+        if [[ -n $OPTION2 ]]; then
+        if [[ $USER == $OPTION2 ]]; then
+        zenity --info --title "QUIZ GAME" --text "You cannot delete yourself";
+        else
+        rm -rf ../$OPTION2
+        fi
+        fi
+    ;;
+    2)
+        PLAYERS
+        OPTION2=$FUNCTION
+        if [[ -n $OPTION2 ]]; then
+        sed -i 's/moderate: 0/moderate: 1/g' ../$OPTION2/config
+        fi
+    ;;
+    3)
+    DIRECTORY=$(zenity --entry --title="QUIZ GAME" --text="Enter name of a type")
+    if [[ -d ../../Newtypes/$DIRECTORY ]]; then
+    zenity --info --title "QUIZ GAME" --text "Type with this name already exists";
+    else
+    mkdir ../../Newtypes/$DIRECTORY
+    touch ../../Newtypes/$DIRECTORY/questions
+    echo "$DIRECTORY/0" >> "../../config"
+    IFS=$'\n'
+    USERS=`ls -d ../../Users/*/ | cut -d '/' -f 4`
+    read -d '' -r -a USERS <<< $USERS
+    for i in "${USERS[@]}"
+    do
+    echo "$DIRECTORY/0" >> "../$i/points"
+    touch ../$i/$DIRECTORY
+    done
+    fi
+    ;;
+    4)
+    TYPE
+    DIR=$FUNCTION3
+    QUESTION=$(zenity --entry --title="QUIZ GAME" --text="Enter question")
+    ANSWER=$(zenity --entry --title="QUIZ GAME" --text="Enter Answer for your question: \n$QUESTION" --width 400)
+    echo "$QUESTION\$$ANSWER" >> "../../Newtypes/$DIR/questions"
+    OLDTOTAL=$(grep "$DIR" ../../config | cut -d '/' -f 2)
+    sed -i "s#$DIR/$OLDTOTAL#$DIR/$(($OLDTOTAL+1))#g" ../../config
+    ;;
+    5)
+    TYPE
+    DIR=$FUNCTION3
+    if [[ -n $DIR ]]; then
+
+    grep -v $DIR ../../config > ../../config2
+    rm ../../config
+    mv ../../config2 ../../config
+
+    IFS=$'\n'
+    USERS=`ls -d ../../Users/*/ | cut -d '/' -f 4`
+    read -d '' -r -a USERS <<< $USERS
+    for i in "${USERS[@]}"
+    do
+    grep -v $DIR ../../Users/$i/points > ../../Users/$i/points2
+    rm ../../Users/$i/points
+    mv ../../Users/$i/points2 ../../Users/$i/points
+    rm ../../Users/$i/$DIR
+    done
+
+    rm -rf ../../Newtypes/$DIR
+
+    fi
+    ;;
+    6)
+    TYPE
+    DIR=$FUNCTION3
+    IFS=$'\n'
+    while IFS= read -r i
+    do
+    QUESTIONSARR="$QUESTIONSARR$(cut -d '$' -f 1 <<< $i)\$$(cut -d '$' -f 2 <<< $i)\$"
+    done < "../../Newtypes/$DIR/questions"
+    IFS=$'$'
+    CQUESTION=$(zenity --list \
+    --title="QUIZ GAME" \
+    --text="Choose option" \
+    --column="Question" --column="Answer" \
+    $QUESTIONSARR \
+    --height 350 --width 500);
+    IFS=$'\n'
+    if [[ -n $CQUESTION ]]; then
+    grep -v $CQUESTION ../../Newtypes/$DIR/questions > ../../Newtypes/$DIR/questions2
+    rm ../../Newtypes/$DIR/questions
+    mv ../../Newtypes/$DIR/questions2 ../../Newtypes/$DIR/questions
+    OLDTOTAL=$(grep "$DIR" ../../config | cut -d '/' -f 2)
+    sed -i "s#$DIR/$OLDTOTAL#$DIR/$(($OLDTOTAL-1))#g" ../../config
+    
+    USERS=`ls -d ../../Users/*/ | cut -d '/' -f 4`
+    read -d '' -r -a USERS <<< $USERS
+    for i in "${USERS[@]}"
+    do
+    TEMP=`grep $CQUESTION ../../Users/$i/$DIR`
+    if [[ $TEMP != "" ]]; then
+    grep -v $CQUESTION ../../Users/$i/$DIR > ../../Users/$i/x$DIR
+    rm ../../Users/$i/$DIR
+    mv ../../Users/$i/x$DIR ../../Users/$i/$DIR
+    OLDTOTAL=$(grep "$DIR" ../../Users/$i/points | cut -d '/' -f 2)
+    sed -i "s#$DIR/$OLDTOTAL#$DIR/$(($OLDTOTAL-1))#g" ../../Users/$i/points
+    fi
+    done
+    fi
+    ;;
+    esac
+    done
+    fi
+;;
+
+#choosing type option in main list
+*)
+while [[ $CANCEL -ne 1 ]]; do
+
+if [[ "$(grep $OPTION ../../config | cut -d '/' -f 2)" -gt "$(grep $OPTION points | cut -d '/' -f 2)" ]]; then
+
+echo "$(comm -13 <(sort -u $OPTION) <(sort -u ../../Newtypes/$OPTION/questions))" > "Temp/$OPTION"
+shuf -n 1 Temp/$OPTION > Temp/CurrentQuestion
+ASK="$(cut -d '$' -f 1 Temp/CurrentQuestion)"
+ASKRESULT="$(cut -d '$' -f 2 Temp/CurrentQuestion)"
+RESULT=$(zenity --entry --title "QUIZ GAME" --text "$ASK")
+CANCEL=$?
+
+if [[ $RESULT == $ASKRESULT ]]; then
+
+OLDTOTAL=$(grep "$OPTION" points | cut -d '/' -f 2)
+sed -i "s#$OPTION/$OLDTOTAL#$OPTION/$(($OLDTOTAL+1))#g" points
+echo "$ASK\$$RESULT" >> $OPTION
+
+$(zenity --info --title "QUIZ GAME" --text "Good!")
+elif [[ $CANCEL -ne 1 ]]; then
+$(zenity --info --title "QUIZ GAME" --text "Bad!")
+fi
+else
+CANCEL='1'
+$(zenity --info --title "QUIZ GAME" --text "You completed all questions :)!")
+fi
+done
+;;
+esac
+done;
+
+#deleting temp files
+            IFS=$'\n'
+            USERS=`ls -d ../../Users/*/ | cut -d '/' -f 4`
+            read -d '' -r -a USERS <<< $USERS
+            for i in "${USERS[@]}"
+            do
+            TEMP=`ls ../../Users/$i/Temp`
+            if [[ -n $TEMP ]]; then
+            rm ../../Users/$i/Temp/*
+            fi
+            done 
+fi

@@ -1,0 +1,4 @@
+what will be output of sed 's/xxx/was' do with wsxaxxxoxxk? (output)$wsxawasoxxk
+what would do cut -d '/' -f 3 with "x\ads/abc/def\ok/wow"?(output)$defok
+do echo print something to the screen?$yes
+do cut replaces some sequence of characters to another?$no
